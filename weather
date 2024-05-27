@@ -1,0 +1,165 @@
+# clone YOLOv5 repository
+!git clone https://github.com/ultralytics/yolov5  # clone repo
+%cd yolov5
+!git reset --hard 064365d8683fd002e9ad789c1e91fa3d021b44f0
+
+
+
+# install dependencies as necessary
+!pip install -qr requirements.txt  # install dependencies (ignore errors)
+import torch
+
+from IPython.display import Image, clear_output  # to display images
+from utils.downloads import attempt_download  # to download models/datasets
+
+# clear_output()
+print('Setup complete. Using torch %s %s' % (torch.__version__, torch.cuda.get_device_properties(0) if torch.cuda.is_available() else 'CPU'))
+
+
+
+
+!pip install roboflow
+
+from roboflow import Roboflow
+rf = Roboflow(api_key="jmgJgD0hKYxpdgs0iWFb")
+project = rf.workspace("shekhar-v2dar").project("cyclone_detection")
+version = project.version(3)
+dataset = version.download("yolov5")
+
+
+
+
+
+
+%cd /content/yolov5
+
+
+
+# this is the YAML file Roboflow wrote for us that we're loading into this notebook with our data
+%cat /content/yolov5/cyclone_detection--3/data.yaml
+
+
+
+
+
+# define number of classes based on YAML
+import yaml
+with open("/content/yolov5/cyclone_detection--3"+ "/data.yaml", 'r') as stream:
+    num_classes = str(yaml.safe_load(stream)['nc'])
+
+
+
+
+#this is the model configuration we will use for our tutorial
+%cat /content/yolov5/models/yolov5s.yaml
+
+
+
+#customize iPython writefile so we can write variables
+from IPython.core.magic import register_line_cell_magic
+
+@register_line_cell_magic
+def writetemplate(line, cell):
+    with open(line, 'w') as f:
+        f.write(cell.format(**globals()))
+
+
+
+
+
+%%writetemplate /content/yolov5/models/custom_yolov5s.yaml
+
+
+
+
+# train yolov5s on custom data for 100 epochs
+# time its performance
+%%time
+%cd /content/yolov5/
+!python train.py --img 416 --batch 16 --epochs 101 --data /content/yolov5/cyclone_detection--3/data.yaml --cfg ./models/custom_yolov5s.yaml --weights '' --name yolov5s_results  --cache
+
+
+
+
+from PIL import Image
+
+image_path = '/content/yolov5/runs/train/yolov5s_results/results.png'
+image = Image.open("/content/yolov5/runs/train/yolov5s_results4/results.png")
+image.show()
+
+
+
+
+
+from IPython.display import Image
+
+Image(filename="/content/yolov5/runs/train/yolov5s_results4/results.png", width=1000)
+
+
+
+
+
+
+Image(filename="/content/yolov5/runs/train/yolov5s_results4/val_batch0_pred.jpg", width=900)
+
+
+
+
+# print out an augmented training example
+print("GROUND TRUTH AUGMENTED TRAINING DATA:")
+Image(filename='/content/yolov5/runs/train/yolov5s_results/train_batch0.jpg', width=900)
+
+
+
+
+
+
+
+
+# trained weights are saved by default in our weights folder
+%ls runs/
+
+
+
+
+
+
+
+%ls /content/yolov5/runs/train/yolov5s_results4/weights
+
+
+
+
+
+!python detect.py --weights /content/yolov5/runs/train/yolov5s_results4/weights/best.pt --img 416 --conf 0.4 --source /content/yolov5/cyclone_detection--3/test/images/
+
+
+
+
+
+
+
+
+import glob
+from IPython.display import Image, display
+
+for imageName in glob.glob('/content/yolov5/runs/detect/exp3/*.jpg')[:10]: #assuming JPG
+    display(Image(filename=imageName))
+
+
+
+
+
+
+
+
+
+from roboflow import Roboflow
+
+# Initialize Roboflow client with your API key
+rf = Roboflow(api_key="jmgJgD0hKYxpdgs0iWFb")
+
+# Access your project and dataset version
+project = rf.workspace("shekhar-v2dar").project("cyclone_detection")
+version = project.version(3)
+
